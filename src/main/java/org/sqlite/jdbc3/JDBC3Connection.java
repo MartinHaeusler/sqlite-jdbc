@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteConnection;
 import org.sqlite.SQLiteOpenMode;
 
@@ -21,6 +22,9 @@ public abstract class JDBC3Connection
 {
     private final AtomicInteger savePoint = new AtomicInteger(0);
     private Map<String, Class<?>> typeMap;
+
+    private boolean firstStatementWasExecuted = false;
+    private boolean readOnly = false;
 
     protected JDBC3Connection(String url, String fileName, Properties prop)
             throws SQLException
@@ -98,24 +102,34 @@ public abstract class JDBC3Connection
     /**
      * @see java.sql.Connection#isReadOnly()
      */
-    public boolean isReadOnly()
-            throws SQLException
-    {
-        return (getDatabase().getConfig().getOpenModeFlags() & SQLiteOpenMode.READONLY.flag) != 0;
+    public boolean isReadOnly() throws SQLException {
+        SQLiteConfig config = getDatabase().getConfig();
+        return (
+                // the entire database is read-only
+                ((config.getOpenModeFlags() & SQLiteOpenMode.READONLY.flag) != 0)
+                // the flag was set explicitly by the user on this connection
+                || (config.isExplicitReadOnlyEnabled() && this.readOnly)
+        );
     }
 
     /**
      * @see java.sql.Connection#setReadOnly(boolean)
      */
-    public void setReadOnly(boolean ro)
-            throws SQLException
-    {
-        // trying to change read-only flag
-        if (ro != isReadOnly()) {
-            throw new SQLException(
+    public void setReadOnly(boolean ro) throws SQLException {
+        if(this.getDatabase().getConfig().isExplicitReadOnlyEnabled()){
+            if(ro != this.readOnly && this.firstStatementWasExecuted){
+                throw new SQLException("Cannot change Read-Only status of this connection: the first statement was" +
+                    " already executed and the transaction is open.");
+            }
+        }else{
+            // trying to change read-only flag
+            if (ro != isReadOnly()) {
+                throw new SQLException(
                     "Cannot change read-only flag after establishing a connection." +
-                            " Use SQLiteConfig#setReadOnly and SQLiteConfig.createConnection().");
+                        " Use SQLiteConfig#setReadOnly and SQLiteConfig.createConnection().");
+            }
         }
+        this.readOnly = ro;
     }
 
     /**
