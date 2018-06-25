@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.charset.UnsupportedCharsetException;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /** This class provides a thin JNI layer over the SQLite3 C API. */

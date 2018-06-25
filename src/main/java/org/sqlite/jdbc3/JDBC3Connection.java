@@ -52,11 +52,12 @@ public abstract class JDBC3Connection
     }
 
     public void checkTransactionMode() throws SQLException {
-        if(this.getDatabase().getConfig().isExplicitReadOnlyEnabled()){
+        // important note: read-only mode is only supported when auto-commit is disabled
+        if(this.getDatabase().getConfig().isExplicitReadOnlyEnabled() && !this.getAutoCommit()){
             if(this.isReadOnly()){
                 // this is a read-only transaction, make sure all writing operations are rejected by the DB
                 // (note: this pragma is evaluated on a per-transaction basis by SQLite)
-                this.getDatabase()._exec("PRAGMA read_only = true;");
+                this.getDatabase()._exec("PRAGMA query_only = true;");
             }else{
                 if(this.getCurrentTransactionType() == TransactionMode.DEFFERED){
                     if(this.isFirstStatementWasExecuted()){
@@ -64,10 +65,11 @@ public abstract class JDBC3Connection
                         throw new SQLException("A statement has already been executed on this connection; cannot upgrade to write transaction!");
                     }else{
                         // this is the first statement in the transaction; close and create an immediate one
-                        this.getDatabase()._exec("ROLLBACK;");
+                        this.getDatabase()._exec("commit;");
+
                         // start the write transaction
                         this.getDatabase()._exec("BEGIN IMMEDIATE;");
-                        this.getDatabase()._exec("PRAGMA read_only = false;");
+                        this.getDatabase()._exec("PRAGMA query_only = false;");
                         this.setCurrentTransactionType(TransactionMode.IMMEDIATE);
                     }
                 }
@@ -80,12 +82,20 @@ public abstract class JDBC3Connection
     public void commit() throws SQLException {
         super.commit();
         this.firstStatementWasExecuted = false;
+        this.currentTransactionType = this.getConnectionConfig().getTransactionMode();
     }
 
     @Override
     public void rollback() throws SQLException {
         super.rollback();
         this.firstStatementWasExecuted = false;
+        this.currentTransactionType = this.getConnectionConfig().getTransactionMode();
+    }
+
+    @Override
+    public void setAutoCommit(final boolean ac) throws SQLException {
+        super.setAutoCommit(ac);
+        this.currentTransactionType = this.getConnectionConfig().getTransactionMode();
     }
 
     /**
