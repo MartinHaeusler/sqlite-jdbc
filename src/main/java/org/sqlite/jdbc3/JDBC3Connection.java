@@ -95,7 +95,15 @@ public abstract class JDBC3Connection
     @Override
     public void setAutoCommit(final boolean ac) throws SQLException {
         super.setAutoCommit(ac);
-        this.currentTransactionType = this.getConnectionConfig().getTransactionMode();
+        if(this.getDatabase().getConfig().isExplicitReadOnlyEnabled()){
+            if(this.isReadOnly()){
+                this.currentTransactionType = TransactionMode.DEFFERED;
+            }else{
+                this.currentTransactionType = TransactionMode.IMMEDIATE;
+            }
+        }else{
+            this.currentTransactionType = this.getConnectionConfig().getTransactionMode();
+        }
     }
 
     /**
@@ -168,7 +176,7 @@ public abstract class JDBC3Connection
     /**
      * @see java.sql.Connection#isReadOnly()
      */
-    public boolean isReadOnly() throws SQLException {
+    public boolean isReadOnly() {
         SQLiteConfig config = getDatabase().getConfig();
         return (
                 // the entire database is read-only
@@ -389,6 +397,19 @@ public abstract class JDBC3Connection
             throw new SQLException("database in auto-commit mode");
         }
         getDatabase().exec(String.format("ROLLBACK TO SAVEPOINT %s", savepoint.getSavepointName()), getAutoCommit());
+    }
+
+    @Override
+    protected String transactionPrefix() {
+        if(this.getDatabase().getConfig().isExplicitReadOnlyEnabled()){
+            if(this.isReadOnly()){
+                return "BEGIN;";
+            }else{
+                return "BEGIN IMMEDIATE;";
+            }
+        } else {
+            return super.transactionPrefix();
+        }
     }
 
     // UNUSED FUNCTIONS /////////////////////////////////////////////
