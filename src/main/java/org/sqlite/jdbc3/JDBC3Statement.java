@@ -429,7 +429,7 @@ public abstract class JDBC3Statement extends CoreStatement {
     public boolean execute(String sql, int autokeys)
         throws SQLException { throw unused(); }
 
-    private <T> T withConnectionTimeout(SQLCallable<T> callable) throws SQLException {
+    protected <T> T withConnectionTimeout(SQLCallable<T> callable) throws SQLException {
         int origBusyTimeout = conn.getBusyTimeout();
         if(queryTimeout > 0){
             // SQLite handles busy timeout in milliseconds, JDBC in seconds
@@ -446,7 +446,7 @@ public abstract class JDBC3Statement extends CoreStatement {
 
     }
 
-    private interface SQLCallable<T> {
+    protected interface SQLCallable<T> {
 
         public T call() throws SQLException;
     }
