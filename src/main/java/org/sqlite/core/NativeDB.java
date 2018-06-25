@@ -18,6 +18,7 @@ package org.sqlite.core;
 
 import org.sqlite.BusyHandler;
 import java.io.UnsupportedEncodingException;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 
 import org.sqlite.Function;
