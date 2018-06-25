@@ -2,6 +2,7 @@ package org.sqlite.jdbc3;
 
 import org.sqlite.ExtendedCommand;
 import org.sqlite.ExtendedCommand.SQLExtension;
+import org.sqlite.SQLiteConfig.TransactionMode;
 import org.sqlite.SQLiteConnection;
 import org.sqlite.core.CoreStatement;
 import org.sqlite.core.DB;

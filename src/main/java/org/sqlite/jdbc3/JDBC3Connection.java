@@ -14,6 +14,7 @@ import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.sqlite.SQLiteConfig;
+import org.sqlite.SQLiteConfig.TransactionMode;
 import org.sqlite.SQLiteConnection;
 import org.sqlite.SQLiteOpenMode;
 
@@ -25,11 +26,66 @@ public abstract class JDBC3Connection
 
     private boolean firstStatementWasExecuted = false;
     private boolean readOnly = false;
+    private TransactionMode currentTransactionType;
 
     protected JDBC3Connection(String url, String fileName, Properties prop)
             throws SQLException
     {
         super(url, fileName, prop);
+        this.currentTransactionType = this.getDatabase().getConfig().getTransactionMode();
+    }
+
+    public void setFirstStatementWasExecuted(final boolean firstStatementWasExecuted) {
+        this.firstStatementWasExecuted = firstStatementWasExecuted;
+    }
+
+    public boolean isFirstStatementWasExecuted() {
+        return firstStatementWasExecuted;
+    }
+
+    public TransactionMode getCurrentTransactionType(){
+        return this.currentTransactionType;
+    }
+
+    public void setCurrentTransactionType(final TransactionMode currentTransactionType) {
+        this.currentTransactionType = currentTransactionType;
+    }
+
+    public void checkTransactionMode() throws SQLException {
+        if(this.getDatabase().getConfig().isExplicitReadOnlyEnabled()){
+            if(this.isReadOnly()){
+                // this is a read-only transaction, make sure all writing operations are rejected by the DB
+                // (note: this pragma is evaluated on a per-transaction basis by SQLite)
+                this.getDatabase()._exec("PRAGMA read_only = true;");
+            }else{
+                if(this.getCurrentTransactionType() == TransactionMode.DEFFERED){
+                    if(this.isFirstStatementWasExecuted()){
+                        // first statement was already executed; cannot upgrade to write transaction!
+                        throw new SQLException("A statement has already been executed on this connection; cannot upgrade to write transaction!");
+                    }else{
+                        // this is the first statement in the transaction; close and create an immediate one
+                        this.getDatabase()._exec("ROLLBACK;");
+                        // start the write transaction
+                        this.getDatabase()._exec("BEGIN IMMEDIATE;");
+                        this.getDatabase()._exec("PRAGMA read_only = false;");
+                        this.setCurrentTransactionType(TransactionMode.IMMEDIATE);
+                    }
+                }
+
+            }
+        }
+    }
+
+    @Override
+    public void commit() throws SQLException {
+        super.commit();
+        this.firstStatementWasExecuted = false;
+    }
+
+    @Override
+    public void rollback() throws SQLException {
+        super.rollback();
+        this.firstStatementWasExecuted = false;
     }
 
     /**
@@ -332,4 +388,6 @@ public abstract class JDBC3Connection
     {
         throw new SQLException("unsupported by SQLite");
     }
+
+
 }
