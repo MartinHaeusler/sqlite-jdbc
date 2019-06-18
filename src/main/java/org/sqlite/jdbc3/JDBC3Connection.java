@@ -34,7 +34,7 @@ public abstract class JDBC3Connection
 
     }
 
-
+    @SuppressWarnings("deprecation")
     public void checkTransactionMode() throws SQLException {
         // important note: read-only mode is only supported when auto-commit is disabled
         if(this.getDatabase().getConfig().isExplicitReadOnlyEnabled() && !this.getAutoCommit() && this.getCurrentTransactionType() != null){
@@ -43,7 +43,7 @@ public abstract class JDBC3Connection
                 // (note: this pragma is evaluated on a per-transaction basis by SQLite)
                 this.getDatabase()._exec("PRAGMA query_only = true;");
             }else{
-                if(this.getCurrentTransactionType() == TransactionMode.DEFFERED){
+                if(this.getCurrentTransactionType() == TransactionMode.DEFERRED || this.getCurrentTransactionType() == TransactionMode.DEFFERED){
                     if(this.isFirstStatementWasExecuted()){
                         // first statement was already executed; cannot upgrade to write transaction!
                         throw new SQLException("A statement has already been executed on this connection; cannot upgrade to write transaction!");
