@@ -8,6 +8,11 @@ our sqlite-jdbc library, then append the library (JAR file) to your class path.
 
 See [the sample code](#usage).
 
+What is different from Xerial's SQLite JDBC?
+--------------------------------------------
+
+We have [introduced the ability](https://github.com/xerial/sqlite-jdbc/pull/432) to set connections to read-only _after_ opening them which essentially makes this JDBC driver compatible with Hibernate and Spring. Additionally, we added the ability to use the resulting JAR-file also in Alpine containers (given that Alpine uses musl instead of glibc). We do not intend to keep this fork longer than necessary and would like to have the changes merged upstream.
+
 What is different from Zentus' SQLite JDBC?
 --------------------------------------------
 The current sqlite-jdbc implementation is forked from [Zentus' SQLite JDBC driver](https://github.com/crawshaw/sqlitejdbc). We have improved it in two ways:
